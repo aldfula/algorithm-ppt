@@ -3,716 +3,588 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>알고리즘 탐험대!</title>
+<title>길 찾기의 마법 : 한붓그리기 탐험</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Malgun Gothic','맑은 고딕',sans-serif;background:#0f0c29;height:100vh;overflow:hidden;color:#fff}
+:root {
+  --bg: #FFF8E7;
+  --river: #4FC3F7;
+  --river-dark: #0288D1;
+  --land: #E6D9AE;
+  --bank: #A9D18E;
+  --bridge: #8D6E63;
+  --accent: #FFD54F;
+  --bad: #FF6F61;
+  --good: #66BB6A;
+  --text: #2C3E6D;
+  --shadow: rgba(44,62,109,0.15);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+.deck { display: flex; flex-direction: column; height: 100vh; }
+.progress-bar { height: 8px; background: rgba(0,0,0,0.08); flex-shrink: 0; }
+.progress-fill { height: 100%; background: var(--accent); width: 6.66%; transition: width .3s ease; }
 
-/* ── SLIDE SYSTEM ── */
-.slide{position:absolute;top:0;left:0;width:100%;height:100%;display:none;flex-direction:column;align-items:center;justify-content:center;padding:30px 40px 80px}
-.slide.active{display:flex}
+#slides { flex: 1; position: relative; overflow: hidden; }
+.slide { position: absolute; inset: 0; display: none; padding: clamp(16px,3vw,48px); overflow-y: auto; }
+.slide.active { display: flex; flex-direction: column; align-items: center; justify-content: center; animation: fadeIn .35s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .progress-fill { transition: none; }
+  .slide.active { animation: none; }
+}
 
-/* ── BACKGROUNDS ── */
-.bg-title {background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)}
-.bg-green {background:linear-gradient(135deg,#0a3d0a,#1a5c1a)}
-.bg-orange{background:linear-gradient(135deg,#3d2000,#5c3800)}
-.bg-purple{background:linear-gradient(135deg,#1a0a3d,#2e1a5c)}
-.bg-teal  {background:linear-gradient(135deg,#0a2d3d,#1a4a5c)}
-.bg-dark  {background:linear-gradient(135deg,#111,#222)}
-.bg-quiz  {background:linear-gradient(135deg,#2a0a3d,#3d1a5c)}
+.slide-inner { max-width: 900px; width: 100%; text-align: center; margin: 0 auto; }
+.slide-title { font-size: clamp(26px,4.2vw,52px); margin: 0 0 .3em; }
+.slide-sub { font-size: clamp(16px,2vw,24px); opacity: .8; margin-top: -.4em; }
+.slide-text { font-size: clamp(18px,2.4vw,28px); line-height: 1.6; margin: .6em 0; }
+.eyebrow { font-size: clamp(14px,1.6vw,18px); letter-spacing: .05em; color: var(--river-dark); font-weight: 700; margin: 0; }
 
-/* ── NAV ── */
-.nav{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);display:flex;gap:12px;z-index:999}
-.btn{padding:11px 28px;border:none;border-radius:25px;font-size:1rem;font-weight:700;cursor:pointer;font-family:inherit;transition:transform .15s,box-shadow .15s}
-.btn:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.4)}
-.btn-prev{background:#555;color:#fff}
-.btn-next{background:linear-gradient(135deg,#ff6b6b,#ffa500);color:#fff}
-.counter{position:fixed;top:14px;right:20px;color:rgba(255,255,255,.5);font-size:.9rem;font-weight:600}
+.diagram { width: 100%; max-width: 460px; height: auto; margin: 14px auto; display: block; }
+.portrait-badge { width: clamp(120px,20vw,160px); height: clamp(120px,20vw,160px); border-radius: 50%; background: #8ECDF0; border: 4px solid #0288D1; display: flex; align-items: center; justify-content: center; font-size: clamp(60px,10vw,88px); margin: 14px auto; }
 
-/* ── TYPE ── */
-.t-huge{font-size:3.2rem;font-weight:900;text-align:center;line-height:1.2;margin-bottom:16px}
-.t-large{font-size:2.2rem;font-weight:900;text-align:center;margin-bottom:16px}
-.t-med{font-size:1.7rem;font-weight:700;margin-bottom:12px}
-.body{font-size:1.1rem;line-height:1.8;color:rgba(255,255,255,.9)}
-.grad{background:linear-gradient(135deg,#ff6b6b,#ffa500,#ffdd57);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.callout { display: inline-block; background: #fff; border: 3px solid var(--accent); border-radius: 16px; padding: 14px 22px; font-size: clamp(18px,2.2vw,26px); font-weight: 700; box-shadow: 0 4px 0 var(--shadow); }
 
-/* ── BOXES ── */
-.box{background:rgba(255,255,255,.08);border-radius:18px;padding:20px 24px;border:1px solid rgba(255,255,255,.12)}
-.box-o{background:rgba(255,165,0,.13);border-color:rgba(255,165,0,.3)}
-.box-p{background:rgba(160,128,255,.13);border-color:rgba(160,128,255,.3)}
-.box-g{background:rgba(80,200,80,.13);border-color:rgba(80,200,80,.3)}
-.box-b{background:rgba(80,160,255,.13);border-color:rgba(80,160,255,.3)}
+.rule-box { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin-top: 16px; }
+.rule-card { flex: 1 1 240px; max-width: 320px; border-radius: 20px; padding: 18px; font-size: clamp(16px,2vw,22px); font-weight: 700; color: #fff; }
+.rule-card.ok { background: var(--good); }
+.rule-card.no { background: var(--bad); }
 
-/* ── LAYOUT ── */
-.row{display:flex;gap:16px;align-items:center;justify-content:center;flex-wrap:wrap}
-.col{display:flex;flex-direction:column;gap:14px;align-items:center}
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;width:100%;max-width:860px}
-.fw{width:100%;max-width:860px}
+.mascot { position: fixed; right: clamp(10px,3vw,32px); bottom: clamp(78px,11vh,120px); display: flex; align-items: flex-end; gap: 8px; z-index: 5; }
+.mascot .mascot-icon { font-size: clamp(32px,5vw,60px); }
+.speech-bubble { background: #fff; border: 3px solid var(--text); border-radius: 16px; padding: 10px 14px; font-size: clamp(13px,1.5vw,16px); max-width: 220px; text-align: left; box-shadow: 0 3px 0 var(--shadow); }
 
-/* ── ANIM ── */
-@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
-@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
-@keyframes pop{0%{transform:scale(0)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
-@keyframes twinkle{0%,100%{opacity:1}50%{opacity:.25}}
-.float{animation:float 3s ease-in-out infinite}
-.pulse{animation:pulse 2s ease-in-out infinite}
+.controls { display: flex; align-items: center; justify-content: center; gap: 20px; padding: 10px 16px; background: #fff; border-top: 2px solid rgba(0,0,0,0.06); flex-shrink: 0; }
+.controls button { font-size: clamp(16px,2vw,20px); padding: 14px 22px; min-height: 64px; min-width: 96px; border: none; border-radius: 16px; background: var(--river-dark); color: #fff; font-weight: 700; cursor: pointer; }
+.controls button:disabled { background: #B0BEC5; cursor: not-allowed; }
+#counter { font-size: clamp(16px,2vw,20px); font-weight: 700; min-width: 70px; text-align: center; }
 
-/* ── STARS ── */
-#stars{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0}
-.star{position:absolute;background:#fff;border-radius:50%;animation:twinkle 2s ease-in-out infinite}
-.slide > *{position:relative;z-index:1}
+.shape-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 16px; margin-top: 10px; }
+@media (max-width: 640px) { .shape-grid { grid-template-columns: 1fr; } }
+.shape-card { background: #fff; border-radius: 16px; padding: 12px; box-shadow: 0 3px 0 var(--shadow); }
+.shape-card h3 { margin: .2em 0; font-size: clamp(15px,1.8vw,20px); }
+.shape-card svg { width: 100%; max-width: 190px; }
+.answer-layer { opacity: 0; transition: opacity .3s ease; }
+.shape-card.revealed .answer-layer { opacity: 1; }
+.answer-text { font-size: clamp(13px,1.5vw,15px); font-weight: 700; margin: 4px 0; min-height: 2.4em; }
+.shape-card button { margin-top: 4px; min-height: 44px; padding: 8px 16px; border: none; border-radius: 12px; background: var(--accent); font-weight: 700; cursor: pointer; }
 
-/* ── COINS ── */
-.coin-btn{width:82px;height:82px;border-radius:50%;border:none;cursor:pointer;font-size:1rem;font-weight:900;transition:transform .15s,box-shadow .15s;font-family:inherit;box-shadow:0 4px 10px rgba(0,0,0,.4);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
-.coin-btn:hover{transform:scale(1.12);box-shadow:0 8px 20px rgba(0,0,0,.5)}
-.coin-btn:active{transform:scale(.95)}
-.coin-btn:disabled{opacity:.35;cursor:not-allowed;transform:none!important}
-.c500{background:linear-gradient(135deg,#f5c518,#e6b000);color:#5a3e00}
-.c100{background:linear-gradient(135deg,#d0d0d0,#a8a8a8);color:#333}
-.c50 {background:linear-gradient(135deg,#cd7f32,#b56e20);color:#fff}
-.c10 {background:linear-gradient(135deg,#b87333,#906020);color:#fff}
+.flashcard-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap: 14px; margin-top: 12px; text-align: left; }
+.flashcard { background: #fff; border-radius: 14px; padding: 12px 16px; box-shadow: 0 3px 0 var(--shadow); }
+.flashcard b { color: var(--river-dark); font-size: clamp(16px,1.8vw,20px); }
+.flashcard p { margin: .3em 0 0; font-size: clamp(14px,1.6vw,17px); }
 
-.prog-wrap{width:100%;background:rgba(255,255,255,.1);border-radius:12px;height:18px;overflow:hidden;margin:8px 0}
-.prog-bar{height:100%;border-radius:12px;background:linear-gradient(90deg,#ff6b6b,#ffa500);transition:width .3s}
-.coin-bag{min-height:52px;background:rgba(255,255,255,.07);border-radius:12px;padding:8px 12px;display:flex;flex-wrap:wrap;gap:7px;align-items:center}
-.coin-tag{background:rgba(255,165,0,.28);border:1px solid rgba(255,165,0,.5);border-radius:8px;padding:3px 9px;font-size:.82rem;font-weight:700}
+.steps-list { text-align: left; max-width: 560px; margin: 14px auto; font-size: clamp(16px,2vw,22px); line-height: 1.8; }
 
-/* ── TREASURE ── */
-.t-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-.chest{width:78px;height:78px;border:none;border-radius:14px;font-size:2.3rem;cursor:pointer;background:rgba(255,255,255,.09);border:2px solid rgba(255,255,255,.18);transition:transform .15s,background .2s;display:flex;align-items:center;justify-content:center}
-.chest:hover:not(:disabled){transform:scale(1.1);background:rgba(255,255,255,.18)}
-.chest:disabled{cursor:default}
-.chest.empty{background:rgba(100,100,100,.18);border-color:rgba(100,100,100,.3)}
-.chest.found{background:rgba(255,215,0,.28);border-color:rgba(255,215,0,.6);animation:pop .4s ease}
+.icon-row { display: flex; gap: 26px; justify-content: center; font-size: clamp(15px,1.8vw,20px); margin: 14px 0; flex-wrap: wrap; }
+.icon-row .icon-item { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.icon-row .icon-item span.emoji { font-size: clamp(34px,4.5vw,52px); }
 
-/* ── QUIZ ── */
-.q-opt{width:100%;padding:14px 22px;border-radius:14px;border:2px solid rgba(255,255,255,.18);background:rgba(255,255,255,.05);cursor:pointer;font-size:1.05rem;font-weight:600;text-align:center;transition:all .2s;font-family:inherit;color:#fff}
-.q-opt:hover:not(:disabled){border-color:rgba(255,255,255,.45);background:rgba(255,255,255,.1)}
-.q-opt.correct{background:rgba(80,200,80,.28);border-color:#50c850}
-.q-opt.wrong{background:rgba(255,80,80,.25);border-color:#ff5050}
+.try-buttons { display: flex; gap: 16px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+.try-buttons button { min-height: 64px; padding: 14px 24px; font-size: clamp(16px,2vw,22px); border: none; border-radius: 16px; font-weight: 700; cursor: pointer; }
+.try-yes { background: var(--good); color: #fff; }
+.try-no { background: var(--bad); color: #fff; }
+.try-response { margin-top: 12px; font-size: clamp(15px,1.8vw,19px); font-weight: 700; min-height: 1.6em; }
 
-/* ── COMPARE TABLE ── */
-.ctable{width:100%;max-width:820px;border-collapse:separate;border-spacing:7px}
-.ctable th{padding:13px 18px;border-radius:11px;font-size:1.1rem;text-align:center}
-.ctable td{padding:11px 18px;border-radius:11px;background:rgba(255,255,255,.07);font-size:.97rem;line-height:1.5}
-.th-o{background:rgba(255,165,0,.28)}
-.th-p{background:rgba(160,128,255,.28)}
-.th-g{background:rgba(255,255,255,.1)}
+.transform-row { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; margin-top: 10px; }
+.transform-row svg { width: 160px; height: auto; }
+.transform-row .arrow { font-size: 34px; }
 
-/* ── STATUS ── */
-.status{font-size:1.2rem;font-weight:700;text-align:center;min-height:38px;padding:6px}
-.s-win{color:#50ff50}
-.s-info{color:#ffa500}
-.s-hint{color:rgba(255,255,255,.65);font-weight:400;font-size:1rem}
-.reset-btn{padding:8px 20px;border:none;border-radius:18px;background:rgba(255,255,255,.13);color:#fff;font-family:inherit;font-size:.93rem;cursor:pointer;transition:background .2s}
-.reset-btn:hover{background:rgba(255,255,255,.22)}
-
-/* ── STEPS ── */
-.steps{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
-.step-c{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.82rem}
-.s-done{background:#50c850}
-.s-active{background:#ff6b6b}
-.s-idle{background:rgba(255,255,255,.15)}
-.arr{color:rgba(255,255,255,.38);font-size:1.1rem}
+.bank { fill: var(--bank); }
+.river-bg { fill: var(--river); }
+.island { fill: var(--land); stroke: rgba(0,0,0,0.15); stroke-width: 2; }
+.bridge { fill: var(--bridge); }
+.route-a { fill: none; stroke: #1E88E5; stroke-width: 4; stroke-dasharray: 8 6; }
+.bridge-num circle { fill: #fff; stroke: var(--text); stroke-width: 2; }
+.bridge-num text { font-size: 14px; font-weight: 700; fill: var(--text); text-anchor: middle; dominant-baseline: middle; }
+.walk-num circle { fill: #1E88E5; stroke: #fff; stroke-width: 2; }
+.walk-num text { font-size: 13px; font-weight: 700; fill: #fff; text-anchor: middle; dominant-baseline: middle; }
+.v-label { font-size: 18px; font-weight: 700; fill: var(--text); text-anchor: middle; }
+.edge { fill: none; stroke: var(--river-dark); stroke-width: 4; }
+.v-circle { fill: #fff; stroke: var(--text); stroke-width: 3; }
+.v-circle.odd-highlight { fill: var(--bad); stroke: #B71C1C; }
+.vertex-num { font-size: 16px; font-weight: 700; fill: var(--text); text-anchor: middle; dominant-baseline: middle; }
+.vertex-num-sm { font-size: 12px; font-weight: 700; fill: var(--text); text-anchor: middle; dominant-baseline: middle; }
+.stamp { font-size: 30px; text-anchor: middle; }
 </style>
 </head>
 <body>
+<div class="deck">
+  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  <main id="slides">
 
-<div id="stars"></div>
-<div class="counter" id="ctr">1 / 12</div>
+    <section class="slide active">
+      <div class="slide-inner">
+        <p class="eyebrow">그래프 이론 대탐험</p>
+        <h1 class="slide-title">길 찾기의 마법</h1>
+        <p class="slide-sub">한붓그리기 탐험</p>
+        <p class="slide-text">연필 하나로 풀어보는 옛날 다리 이야기</p>
+      </div>
+      <div class="mascot">
+        <div class="speech-bubble">안녕! 나는 탐험대장 비버야 🦫<br>오늘은 신기한 다리 이야기를 들려줄게. 같이 떠나볼까?</div>
+        <span class="mascot-icon">🦫</span>
+      </div>
+    </section>
 
-<!-- ══════════ SLIDE 1 ══════════ -->
-<div class="slide bg-title active" id="s1">
-  <div class="col" style="gap:22px">
-    <div style="font-size:5rem;animation:float 3s ease-in-out infinite">🚀</div>
-    <div class="t-huge grad">알고리즘 탐험대!</div>
-    <div class="t-med" style="text-align:center;color:rgba(255,255,255,.85)">
-      🤑 그리디 알고리즘 &nbsp;vs&nbsp; 🔍 완전탐색
-    </div>
-    <div class="box" style="max-width:580px;text-align:center">
-      <p class="body">컴퓨터가 문제를 푸는 두 가지 방법을 배워봐요!</p>
-    </div>
-    <div class="row" style="font-size:2.2rem;gap:18px">🍬 🗝️ 💎 🗺️ 🏆</div>
-  </div>
+    <section class="slide">
+      <div class="slide-inner">
+        <h2 class="slide-title">이야기의 시작</h2>
+        <p class="slide-text">옛날 옛적, 프레겔강이 흐르는 '쾨니히스베르크'라는 마을이 있었어요.</p>
+        <svg class="diagram" viewBox="0 0 400 300">
+          <rect class="bank" x="0" y="0" width="400" height="75"/>
+          <rect class="river-bg" x="0" y="75" width="400" height="150"/>
+          <rect class="bank" x="0" y="225" width="400" height="75"/>
+          <ellipse class="island" cx="150" cy="150" rx="75" ry="48"/>
+          <ellipse class="island" cx="300" cy="150" rx="48" ry="38"/>
+          <rect class="bridge" x="120" y="75" width="10" height="32"/>
+          <rect class="bridge" x="170" y="75" width="10" height="32"/>
+          <rect class="bridge" x="120" y="193" width="10" height="32"/>
+          <rect class="bridge" x="170" y="193" width="10" height="32"/>
+          <rect class="bridge" x="295" y="75" width="10" height="39"/>
+          <rect class="bridge" x="295" y="186" width="10" height="39"/>
+          <rect class="bridge" x="222" y="145" width="33" height="10"/>
+        </svg>
+        <p class="slide-text">강 위에는 섬이 두 개, 다리가 무려 7개나 있었답니다!</p>
+      </div>
+      <div class="mascot">
+        <div class="speech-bubble">강이랑 섬이랑 다리... 벌써 신비로운 냄새가 나지 않아?</div>
+        <span class="mascot-icon">🦫</span>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <h2 class="slide-title">도시 소개</h2>
+        <p class="slide-text">북쪽 마을과 남쪽 마을, 그리고 큰 섬과 작은 섬을 다리들이 이어주고 있어요.</p>
+        <svg class="diagram" viewBox="0 0 400 300">
+          <rect class="bank" x="0" y="0" width="400" height="75"/>
+          <rect class="river-bg" x="0" y="75" width="400" height="150"/>
+          <rect class="bank" x="0" y="225" width="400" height="75"/>
+          <ellipse class="island" cx="150" cy="150" rx="75" ry="48"/>
+          <ellipse class="island" cx="300" cy="150" rx="48" ry="38"/>
+          <rect class="bridge" x="120" y="75" width="10" height="32"/>
+          <rect class="bridge" x="170" y="75" width="10" height="32"/>
+          <rect class="bridge" x="120" y="193" width="10" height="32"/>
+          <rect class="bridge" x="170" y="193" width="10" height="32"/>
+          <rect class="bridge" x="295" y="75" width="10" height="39"/>
+          <rect class="bridge" x="295" y="186" width="10" height="39"/>
+          <rect class="bridge" x="222" y="145" width="33" height="10"/>
+          <text class="v-label" x="200" y="34">북쪽 마을</text>
+          <text class="v-label" x="200" y="288">남쪽 마을</text>
+          <text class="v-label" x="150" y="154">큰 섬</text>
+          <text class="v-label" x="300" y="154">작은 섬</text>
+          <g class="bridge-num"><circle cx="112" cy="58" r="11"/><text x="112" y="59">1</text></g>
+          <g class="bridge-num"><circle cx="188" cy="58" r="11"/><text x="188" y="59">2</text></g>
+          <g class="bridge-num"><circle cx="112" cy="242" r="11"/><text x="112" y="243">3</text></g>
+          <g class="bridge-num"><circle cx="188" cy="242" r="11"/><text x="188" y="243">4</text></g>
+          <g class="bridge-num"><circle cx="330" cy="70" r="11"/><text x="330" y="71">5</text></g>
+          <g class="bridge-num"><circle cx="330" cy="230" r="11"/><text x="330" y="231">6</text></g>
+          <g class="bridge-num"><circle cx="238" cy="130" r="11"/><text x="238" y="131">7</text></g>
+        </svg>
+        <p class="slide-text">다리마다 번호를 붙여봤어요. 모두 7개랍니다!</p>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <h2 class="slide-title">시민들의 도전</h2>
+        <p class="slide-text">마을 사람들은 늘 궁금했어요.</p>
+        <p class="callout">7개 다리를 각각 딱 한 번씩만 건너서<br>마을을 한 바퀴 산책할 수 있을까?</p>
+        <p class="slide-text" style="margin-top:16px;">⚠️ 같은 다리를 두 번 건너면 안 돼요!</p>
+        <div class="try-buttons">
+          <button class="try-yes" onclick="handleGuess()">가능해요!</button>
+          <button class="try-no" onclick="handleGuess()">불가능해요!</button>
+        </div>
+        <p class="try-response" id="tryResponse"></p>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <h2 class="slide-title">도전 실패!</h2>
+        <p class="slide-text">사람들은 실제로 걸어보기 시작했어요. 그런데... 어라?</p>
+        <svg class="diagram" viewBox="0 0 400 300">
+          <rect class="bank" x="0" y="0" width="400" height="75"/>
+          <rect class="river-bg" x="0" y="75" width="400" height="150"/>
+          <rect class="bank" x="0" y="225" width="400" height="75"/>
+          <ellipse class="island" cx="150" cy="150" rx="75" ry="48"/>
+          <ellipse class="island" cx="300" cy="150" rx="48" ry="38"/>
+          <rect class="bridge" x="120" y="75" width="10" height="32"/>
+          <rect class="bridge" x="170" y="75" width="10" height="32"/>
+          <rect class="bridge" x="120" y="193" width="10" height="32"/>
+          <rect class="bridge" x="170" y="193" width="10" height="32"/>
+          <rect class="bridge" x="295" y="75" width="10" height="39"/>
+          <rect class="bridge" x="295" y="186" width="10" height="39"/>
+          <rect class="bridge" x="222" y="145" width="33" height="10"/>
+          <path class="route-a" style="opacity:.55" d="M200,50 L125,91 L150,150 L125,209 L200,250 L175,209 L150,150 L238,150 L300,150 L300,94 L200,50 L175,91 L150,150"/>
+          <g class="walk-num"><circle cx="125" cy="91" r="12"/><text x="125" y="92">1</text></g>
+          <g class="walk-num"><circle cx="125" cy="209" r="12"/><text x="125" y="210">2</text></g>
+          <g class="walk-num"><circle cx="175" cy="209" r="12"/><text x="175" y="210">3</text></g>
+          <g class="walk-num"><circle cx="238" cy="150" r="12"/><text x="238" y="151">4</text></g>
+          <g class="walk-num"><circle cx="300" cy="94" r="12"/><text x="300" y="95">5</text></g>
+          <g class="walk-num"><circle cx="175" cy="91" r="12"/><text x="175" y="92">6</text></g>
+          <circle cx="300" cy="205" r="17" fill="none" stroke="#B71C1C" stroke-width="3" stroke-dasharray="4 4"/>
+          <text x="300" y="250" style="font-size:13px;font-weight:700;fill:#B71C1C" text-anchor="middle">7번째 다리는 못 건넜어요!</text>
+          <circle cx="150" cy="150" r="26" fill="rgba(255,255,255,0.9)" stroke="#B71C1C" stroke-width="3"/>
+          <text x="150" y="152" style="font-size:30px" text-anchor="middle" dominant-baseline="middle">😵</text>
+        </svg>
+        <p class="slide-text">이 친구는 무려 6개 다리를 건넜어요! 그런데... 마지막 다리 하나는 도저히 건널 수 없었죠.</p>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <h2 class="slide-title">천재 수학자의 등장</h2>
+        <p class="slide-text">그때, 한 똑똑한 수학자가 나타났어요.</p>
+        <div class="portrait-badge">🧑‍🦳</div>
+        <p class="slide-text"><b>레온하르트 오일러</b> (1736년)</p>
+        <p class="callout">오일러는 놀랍게도, 다리를 직접 건너보지도 않고 답을 찾아냈대요!</p>
+      </div>
+      <div class="mascot">
+        <div class="speech-bubble">비결이 궁금하지 않아? 오일러의 머릿속으로 들어가보자!</div>
+        <span class="mascot-icon">🦫</span>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <h2 class="slide-title">지도를 간단하게!</h2>
+        <p class="slide-text">오일러의 비밀은 바로 '간단하게 그리기'였어요.<br>마을과 섬은 점(●)으로, 다리는 선(─)으로 바꿔봐요!</p>
+        <div class="transform-row">
+          <svg viewBox="0 0 400 300">
+            <rect class="bank" x="0" y="0" width="400" height="75"/>
+            <rect class="river-bg" x="0" y="75" width="400" height="150"/>
+            <rect class="bank" x="0" y="225" width="400" height="75"/>
+            <ellipse class="island" cx="150" cy="150" rx="75" ry="48"/>
+            <ellipse class="island" cx="300" cy="150" rx="48" ry="38"/>
+            <rect class="bridge" x="120" y="75" width="10" height="32"/>
+            <rect class="bridge" x="170" y="75" width="10" height="32"/>
+            <rect class="bridge" x="120" y="193" width="10" height="32"/>
+            <rect class="bridge" x="170" y="193" width="10" height="32"/>
+            <rect class="bridge" x="295" y="75" width="10" height="39"/>
+            <rect class="bridge" x="295" y="186" width="10" height="39"/>
+            <rect class="bridge" x="222" y="145" width="33" height="10"/>
+          </svg>
+          <span class="arrow">➡️</span>
+          <svg viewBox="0 0 400 300">
+            <path class="edge" d="M200,50 L110,150"/>
+            <path class="edge" d="M200,50 Q60,100 110,150"/>
+            <path class="edge" d="M200,250 L110,150"/>
+            <path class="edge" d="M200,250 Q60,200 110,150"/>
+            <path class="edge" d="M200,50 L290,150"/>
+            <path class="edge" d="M200,250 L290,150"/>
+            <path class="edge" d="M110,150 L290,150"/>
+            <circle class="v-circle" cx="200" cy="50" r="16"/>
+            <circle class="v-circle" cx="200" cy="250" r="16"/>
+            <circle class="v-circle" cx="110" cy="150" r="18"/>
+            <circle class="v-circle" cx="290" cy="150" r="16"/>
+          </svg>
+        </div>
+        <p class="callout" style="margin-top:14px;">점 = 정점, 선 = 간선<br>점과 선으로 이루어진 그림을 <b>그래프</b>라고 해요!</p>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <h2 class="slide-title">차수란 무엇일까?</h2>
+        <p class="slide-text">각 점에 선이 몇 개 연결되어 있는지 세어볼까요? 이 개수를 <b>차수</b>라고 불러요.</p>
+        <svg class="diagram" viewBox="0 0 400 300">
+          <path class="edge" d="M200,50 L110,150"/>
+          <path class="edge" d="M200,50 Q60,100 110,150"/>
+          <path class="edge" d="M200,250 L110,150"/>
+          <path class="edge" d="M200,250 Q60,200 110,150"/>
+          <path class="edge" d="M200,50 L290,150"/>
+          <path class="edge" d="M200,250 L290,150"/>
+          <path class="edge" d="M110,150 L290,150"/>
+          <circle class="v-circle" cx="200" cy="50" r="16"/>
+          <circle class="v-circle" cx="200" cy="250" r="16"/>
+          <circle class="v-circle" cx="110" cy="150" r="18"/>
+          <circle class="v-circle" cx="290" cy="150" r="16"/>
+          <text class="vertex-num" x="200" y="50">3</text>
+          <text class="vertex-num" x="200" y="250">3</text>
+          <text class="vertex-num" x="110" y="150">5</text>
+          <text class="vertex-num" x="290" y="150">3</text>
+          <text class="v-label" x="200" y="30">북쪽</text>
+          <text class="v-label" x="200" y="292">남쪽</text>
+          <text class="v-label" x="85" y="155" style="text-anchor:end">큰 섬</text>
+          <text class="v-label" x="312" y="155" style="text-anchor:start">작은 섬</text>
+        </svg>
+        <p class="slide-text">큰 섬은 다리가 5개나 연결되어 있어서 차수가 5예요!</p>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <h2 class="slide-title">한붓그리기가 뭐예요?</h2>
+        <p class="slide-text">이제 재미있는 게임을 해볼까요? 이름하여 <b>한붓그리기</b>!</p>
+        <div class="steps-list">
+          ① 연필을 종이에서 떼지 않아요<br>
+          ② 이미 그은 선은 다시 긋지 않아요
+        </div>
+        <p class="callout">어떤 그림은 되고, 어떤 그림은 안 돼요.<br>왜 그럴까요?</p>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <h2 class="slide-title">함께 해봐요! 연습 도형들</h2>
+        <p class="slide-text">머릿속으로 연필을 떼지 않고 그려보고, 정답을 확인해보세요.</p>
+        <div class="shape-grid">
+          <div class="shape-card" id="card1">
+            <h3>삼각형</h3>
+            <svg viewBox="0 0 200 180">
+              <polygon points="100,20 20,160 180,160" style="fill:none;stroke:var(--river-dark);stroke-width:5;"/>
+              <circle class="v-circle" cx="100" cy="20" r="11"/>
+              <circle class="v-circle" cx="20" cy="160" r="11"/>
+              <circle class="v-circle" cx="180" cy="160" r="11"/>
+              <g class="answer-layer">
+                <text class="vertex-num-sm" x="100" y="20">2</text>
+                <text class="vertex-num-sm" x="20" y="160">2</text>
+                <text class="vertex-num-sm" x="180" y="160">2</text>
+                <text class="stamp" x="175" y="32">✅</text>
+              </g>
+            </svg>
+            <p class="answer-text answer-layer">홀수점 0개 → 가능! 아무 점에서나 시작해도 돼요.</p>
+            <button onclick="toggleAnswer('card1')">정답 보기</button>
+          </div>
+          <div class="shape-card" id="card2">
+            <h3>집 모양</h3>
+            <svg viewBox="0 0 200 200">
+              <line class="edge" x1="40" y1="180" x2="160" y2="180"/>
+              <line class="edge" x1="40" y1="180" x2="40" y2="100"/>
+              <line class="edge" x1="160" y1="180" x2="160" y2="100"/>
+              <line class="edge" x1="40" y1="100" x2="160" y2="100"/>
+              <line class="edge" x1="40" y1="100" x2="100" y2="40"/>
+              <line class="edge" x1="160" y1="100" x2="100" y2="40"/>
+              <circle class="v-circle" cx="40" cy="180" r="11"/>
+              <circle class="v-circle" cx="160" cy="180" r="11"/>
+              <circle class="v-circle" cx="40" cy="100" r="11"/>
+              <circle class="v-circle" cx="160" cy="100" r="11"/>
+              <circle class="v-circle" cx="100" cy="40" r="11"/>
+              <g class="answer-layer">
+                <text class="vertex-num-sm" x="40" y="180">2</text>
+                <text class="vertex-num-sm" x="160" y="180">2</text>
+                <text class="vertex-num-sm" x="40" y="100">3</text>
+                <text class="vertex-num-sm" x="160" y="100">3</text>
+                <text class="vertex-num-sm" x="100" y="40">2</text>
+                <text class="stamp" x="172" y="32">✅</text>
+              </g>
+            </svg>
+            <p class="answer-text answer-layer">홀수점 2개 → 가능! 지붕 아래 양쪽 모서리에서 시작해야 해요.</p>
+            <button onclick="toggleAnswer('card2')">정답 보기</button>
+          </div>
+          <div class="shape-card" id="card3">
+            <h3>쌍둥이 대각선 사각형</h3>
+            <svg viewBox="0 0 200 200">
+              <line class="edge" x1="40" y1="40" x2="160" y2="40"/>
+              <line class="edge" x1="160" y1="40" x2="160" y2="160"/>
+              <line class="edge" x1="160" y1="160" x2="40" y2="160"/>
+              <line class="edge" x1="40" y1="160" x2="40" y2="40"/>
+              <line class="edge" x1="40" y1="40" x2="100" y2="100"/>
+              <line class="edge" x1="160" y1="40" x2="100" y2="100"/>
+              <line class="edge" x1="160" y1="160" x2="100" y2="100"/>
+              <line class="edge" x1="40" y1="160" x2="100" y2="100"/>
+              <circle class="v-circle" cx="40" cy="40" r="11"/>
+              <circle class="v-circle" cx="160" cy="40" r="11"/>
+              <circle class="v-circle" cx="160" cy="160" r="11"/>
+              <circle class="v-circle" cx="40" cy="160" r="11"/>
+              <circle class="v-circle" cx="100" cy="100" r="11"/>
+              <g class="answer-layer">
+                <text class="vertex-num-sm" x="40" y="40">3</text>
+                <text class="vertex-num-sm" x="160" y="40">3</text>
+                <text class="vertex-num-sm" x="160" y="160">3</text>
+                <text class="vertex-num-sm" x="40" y="160">3</text>
+                <text class="vertex-num-sm" x="100" y="100">4</text>
+                <text class="stamp" x="100" y="72">❌</text>
+              </g>
+            </svg>
+            <p class="answer-text answer-layer">홀수점 4개 → 불가능!</p>
+            <button onclick="toggleAnswer('card3')">정답 보기</button>
+          </div>
+          <div class="shape-card" id="card4">
+            <h3>숫자 8 모양 (보너스!)</h3>
+            <svg viewBox="0 0 240 180">
+              <line class="edge" x1="120" y1="90" x2="30" y2="40"/>
+              <line class="edge" x1="30" y1="40" x2="30" y2="140"/>
+              <line class="edge" x1="30" y1="140" x2="120" y2="90"/>
+              <line class="edge" x1="120" y1="90" x2="210" y2="40"/>
+              <line class="edge" x1="210" y1="40" x2="210" y2="140"/>
+              <line class="edge" x1="210" y1="140" x2="120" y2="90"/>
+              <circle class="v-circle" cx="120" cy="90" r="11"/>
+              <circle class="v-circle" cx="30" cy="40" r="11"/>
+              <circle class="v-circle" cx="30" cy="140" r="11"/>
+              <circle class="v-circle" cx="210" cy="40" r="11"/>
+              <circle class="v-circle" cx="210" cy="140" r="11"/>
+              <g class="answer-layer">
+                <text class="vertex-num-sm" x="120" y="90">4</text>
+                <text class="vertex-num-sm" x="30" y="40">2</text>
+                <text class="vertex-num-sm" x="30" y="140">2</text>
+                <text class="vertex-num-sm" x="210" y="40">2</text>
+                <text class="vertex-num-sm" x="210" y="140">2</text>
+                <text class="stamp" x="120" y="160">✅</text>
+              </g>
+            </svg>
+            <p class="answer-text answer-layer">홀수점 0개 → 가능! 보너스 성공이에요.</p>
+            <button onclick="toggleAnswer('card4')">정답 보기</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <h2 class="slide-title">규칙 발견!</h2>
+        <p class="slide-text">짜잔! 드디어 규칙을 찾았어요!</p>
+        <div class="rule-box">
+          <div class="rule-card ok">홀수점이 0개 또는 2개면<br>한붓그리기 가능! ✅</div>
+          <div class="rule-card no">홀수점이 3개 이상이면<br>한붓그리기 불가능! ❌</div>
+        </div>
+        <p class="callout" style="margin-top:18px;">홀점은 두 개까지만 괜찮아요!</p>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <h2 class="slide-title">다시 쾨니히스베르크로!</h2>
+        <p class="slide-text">우리가 발견한 규칙을 다리 그래프에 적용해볼까요?</p>
+        <svg class="diagram" viewBox="0 0 400 300">
+          <path class="edge" d="M200,50 L110,150"/>
+          <path class="edge" d="M200,50 Q60,100 110,150"/>
+          <path class="edge" d="M200,250 L110,150"/>
+          <path class="edge" d="M200,250 Q60,200 110,150"/>
+          <path class="edge" d="M200,50 L290,150"/>
+          <path class="edge" d="M200,250 L290,150"/>
+          <path class="edge" d="M110,150 L290,150"/>
+          <circle class="v-circle odd-highlight" cx="200" cy="50" r="16"/>
+          <circle class="v-circle odd-highlight" cx="200" cy="250" r="16"/>
+          <circle class="v-circle odd-highlight" cx="110" cy="150" r="18"/>
+          <circle class="v-circle odd-highlight" cx="290" cy="150" r="16"/>
+          <text class="vertex-num" x="200" y="50" style="fill:#fff">3</text>
+          <text class="vertex-num" x="200" y="250" style="fill:#fff">3</text>
+          <text class="vertex-num" x="110" y="150" style="fill:#fff">5</text>
+          <text class="vertex-num" x="290" y="150" style="fill:#fff">3</text>
+          <text class="v-label" x="200" y="30">북쪽</text>
+          <text class="v-label" x="200" y="292">남쪽</text>
+          <text class="v-label" x="85" y="155" style="text-anchor:end">큰 섬</text>
+          <text class="v-label" x="312" y="155" style="text-anchor:start">작은 섬</text>
+        </svg>
+        <p class="callout">네 점 모두 홀수점이에요! 4개나 되죠?</p>
+        <p class="slide-text">그래서... 쾨니히스베르크의 산책은 불가능했던 거예요! 오일러가 옳았어요!</p>
+      </div>
+      <div class="mascot">
+        <div class="speech-bubble">우리가 오일러처럼 답을 찾아냈어! 대단한걸?</div>
+        <span class="mascot-icon">🦫</span>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <h2 class="slide-title">이제 우리가 탐험가!</h2>
+        <p class="slide-text">이제 여러분 차례예요! 준비물을 꺼내볼까요?</p>
+        <div class="icon-row">
+          <div class="icon-item"><span class="emoji">📄</span>한붓그리기 활동지</div>
+          <div class="icon-item"><span class="emoji">✏️</span>필기도구</div>
+        </div>
+        <div class="steps-list">
+          ① 점의 차수를 세어보기<br>
+          ② 홀수점이 몇 개인지 확인하기<br>
+          ③ 예상해보고, 실제로 그려보기
+        </div>
+        <p class="callout">틀려도 괜찮아요, 탐험은 원래 시행착오의 연속이니까요!</p>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <h2 class="slide-title">오늘 배운 것 정리</h2>
+        <div class="flashcard-grid">
+          <div class="flashcard"><b>그래프</b><p>점과 선으로 이루어진 그림</p></div>
+          <div class="flashcard"><b>정점</b><p>그래프의 점</p></div>
+          <div class="flashcard"><b>간선</b><p>점과 점을 잇는 선</p></div>
+          <div class="flashcard"><b>차수</b><p>한 점에 연결된 선의 개수</p></div>
+          <div class="flashcard"><b>홀수점 · 짝수점</b><p>차수가 홀수 또는 짝수인 점</p></div>
+          <div class="flashcard"><b>한붓그리기</b><p>연필을 떼지 않고, 겹치지 않게 선 긋기</p></div>
+          <div class="flashcard"><b>오일러 경로</b><p>모든 간선을 한 번씩만 지나가는 길</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <h2 class="slide-title">그래프는 우리 생활 속에!</h2>
+        <p class="slide-text">그래프는 우리 생활 곳곳에 숨어 있어요!</p>
+        <div class="icon-row">
+          <div class="icon-item"><span class="emoji">🚇</span>지하철 노선도</div>
+          <div class="icon-item"><span class="emoji">🗺️</span>내비게이션 길찾기</div>
+          <div class="icon-item"><span class="emoji">📦</span>택배 배달 경로</div>
+        </div>
+        <p class="callout" style="margin-top:18px;">미션: 가족에게 오늘 배운 다리 이야기를 들려주세요!</p>
+      </div>
+      <div class="mascot">
+        <div class="speech-bubble">오늘 탐험 정말 즐거웠어! 다음에 또 만나자! 🦫</div>
+        <span class="mascot-icon">🦫</span>
+      </div>
+    </section>
+
+  </main>
+  <nav class="controls">
+    <button id="prevBtn" aria-label="이전 슬라이드">◀ 이전</button>
+    <div id="counter" aria-live="polite">1 / 15</div>
+    <button id="nextBtn" aria-label="다음 슬라이드">다음 ▶</button>
+  </nav>
 </div>
-
-<!-- ══════════ SLIDE 2 ══════════ -->
-<div class="slide bg-green" id="s2">
-  <div class="col fw" style="gap:18px">
-    <div class="t-large">🤔 알고리즘이 뭐야?</div>
-    <div class="g2">
-      <div class="box box-g" style="text-align:center">
-        <div style="font-size:2.8rem;margin-bottom:10px">📋</div>
-        <div class="t-med" style="font-size:1.3rem;margin-bottom:8px">문제를 푸는 순서</div>
-        <div class="body" style="font-size:1rem">어떤 문제를 어떤 순서로<br>풀지 정해놓은 방법이에요!</div>
-      </div>
-      <div class="box box-g" style="text-align:center">
-        <div style="font-size:2.8rem;margin-bottom:10px">🍳</div>
-        <div class="t-med" style="font-size:1.3rem;margin-bottom:8px">요리 레시피 같아요!</div>
-        <div class="body" style="font-size:1rem">
-          라면 끓이기:<br>
-          ① 물 끓이기<br>
-          ② 면 넣기<br>
-          ③ 스프 넣기 ✨
-        </div>
-      </div>
-    </div>
-    <div class="box fw" style="text-align:center">
-      <div class="body">컴퓨터도 문제를 풀 때 알고리즘 = 레시피를 따라요! 🖥️</div>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════ SLIDE 3 ══════════ -->
-<div class="slide bg-title" id="s3">
-  <div class="col fw" style="gap:20px">
-    <div class="t-large">🌟 오늘 만날 두 친구</div>
-    <div class="g2">
-      <div class="box box-o" style="text-align:center;padding:28px">
-        <div style="font-size:4rem;animation:float 2.5s ease-in-out infinite">🤑</div>
-        <div class="t-med" style="color:#ffa500;margin-top:8px">그리디</div>
-        <div class="body" style="margin-top:8px;font-size:1rem">"지금 당장<br>가장 좋은 것만 선택!"</div>
-        <div style="margin-top:10px;color:rgba(255,165,0,.7);font-size:.9rem">⚡ 빠르지만 가끔 실수해요</div>
-      </div>
-      <div class="box box-b" style="text-align:center;padding:28px">
-        <div style="font-size:4rem;animation:float 2.5s ease-in-out infinite;animation-delay:.5s">🔍</div>
-        <div class="t-med" style="color:#50a0ff;margin-top:8px">완전탐색</div>
-        <div class="body" style="margin-top:8px;font-size:1rem">"모든 경우를<br>다 한번 해봐!"</div>
-        <div style="margin-top:10px;color:rgba(80,160,255,.7);font-size:.9rem">🐢 느리지만 항상 정확해요</div>
-      </div>
-    </div>
-    <div class="box" style="text-align:center;width:100%;max-width:580px">
-      <div class="body">둘 다 훌륭해요! 상황에 맞는 방법을 골라 써요 😊</div>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════ SLIDE 4 ══════════ -->
-<div class="slide bg-purple" id="s4">
-  <div class="col fw" style="gap:18px">
-    <div style="font-size:4.5rem;animation:float 3s ease-in-out infinite">🔍</div>
-    <div class="t-large" style="color:#a080ff">완전탐색</div>
-    <div class="box box-p" style="text-align:center;max-width:680px">
-      <div style="font-size:1.8rem;margin-bottom:8px">💡</div>
-      <div class="t-med" style="font-size:1.5rem;color:#a080ff">"모든 경우를 다 해봐!"</div>
-      <div class="body" style="margin-top:12px;font-size:1rem">
-        가능한 모든 방법을 하나씩 다 시도해봐요.<br>
-        느리지만 <strong>반드시</strong> 정답을 찾을 수 있어요!
-      </div>
-    </div>
-    <div class="row fw" style="gap:12px">
-      <div class="box" style="text-align:center;padding:14px 18px;flex:1;min-width:170px">
-        <div style="font-size:1.7rem;margin-bottom:6px">🔐</div>
-        <div class="body" style="font-size:.92rem">자물쇠 비밀번호<br>0000~9999 다 시도!</div>
-      </div>
-      <div class="box" style="text-align:center;padding:14px 18px;flex:1;min-width:170px">
-        <div style="font-size:1.7rem;margin-bottom:6px">📦</div>
-        <div class="body" style="font-size:.92rem">보물 찾기<br>모든 상자 열기!</div>
-      </div>
-      <div class="box" style="text-align:center;padding:14px 18px;flex:1;min-width:170px">
-        <div style="font-size:1.7rem;margin-bottom:6px">🗺️</div>
-        <div class="body" style="font-size:.92rem">길 찾기<br>모든 길 다 가보기!</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════ SLIDE 5 ══════════ -->
-<div class="slide bg-purple" id="s5">
-  <div class="col fw" style="gap:16px">
-    <div class="t-large" style="color:#a080ff;font-size:2rem">🔐 완전탐색 예시: 비밀번호 찾기</div>
-    <div class="box box-p fw" style="text-align:center">
-      <div class="body" style="font-size:1.1rem">
-        자물쇠 비밀번호가 1~3 사이 두 자리 숫자예요!<br>
-        🔍 완전탐색은 <strong style="color:#a080ff">모든 조합</strong>을 순서대로 시도해요!
-      </div>
-    </div>
-    <div class="box fw" style="padding:20px">
-      <div class="body" style="color:#a080ff;font-weight:700;margin-bottom:14px">🔍 시도 순서 (총 9가지):</div>
-      <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center">
-        <span style="background:rgba(255,80,80,.3);border:2px solid #ff5050;border-radius:10px;padding:8px 14px;font-size:1.1rem;font-weight:700">11 ❌</span>
-        <span style="background:rgba(255,80,80,.3);border:2px solid #ff5050;border-radius:10px;padding:8px 14px;font-size:1.1rem;font-weight:700">12 ❌</span>
-        <span style="background:rgba(255,80,80,.3);border:2px solid #ff5050;border-radius:10px;padding:8px 14px;font-size:1.1rem;font-weight:700">13 ❌</span>
-        <span style="background:rgba(255,80,80,.3);border:2px solid #ff5050;border-radius:10px;padding:8px 14px;font-size:1.1rem;font-weight:700">21 ❌</span>
-        <span style="background:rgba(255,215,0,.35);border:2px solid gold;border-radius:10px;padding:8px 14px;font-size:1.1rem;font-weight:700;animation:pulse 1s infinite">22 🎉</span>
-        <span style="background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.15);border-radius:10px;padding:8px 14px;font-size:1.1rem;color:rgba(255,255,255,.3)">23</span>
-        <span style="background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.15);border-radius:10px;padding:8px 14px;font-size:1.1rem;color:rgba(255,255,255,.3)">31</span>
-        <span style="background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.15);border-radius:10px;padding:8px 14px;font-size:1.1rem;color:rgba(255,255,255,.3)">32</span>
-        <span style="background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.15);border-radius:10px;padding:8px 14px;font-size:1.1rem;color:rgba(255,255,255,.3)">33</span>
-      </div>
-      <div class="body" style="margin-top:14px;text-align:center;font-size:.95rem">
-        11 → 12 → 13 → 21 → <span style="color:gold;font-weight:700">22 발견! 🎯</span> → 탐색 끝!
-      </div>
-    </div>
-    <div class="box box-g fw" style="text-align:center">
-      <div class="body">✅ <strong style="color:#50ff50">반드시</strong> 정답을 찾아요! 모든 경우를 확인하니까요!</div>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════ SLIDE 6: 완전탐색 게임 ══════════ -->
-<div class="slide bg-purple" id="s6">
-  <div class="col fw" style="gap:10px">
-    <div class="t-large" style="color:#a080ff;font-size:1.9rem">🎮 완전탐색 게임: 보물 찾기!</div>
-    <div class="box box-p fw" style="padding:13px;text-align:center">
-      <div class="body" style="font-size:1.1rem">
-        📦 <strong>16개의 상자</strong> 중 하나에 보물이 숨어있어요! 하나씩 열어서 찾아봐요!
-      </div>
-      <div class="body" style="margin-top:4px;font-size:.93rem">
-        열어본 상자: <strong id="t-open">0</strong>/16 &nbsp;|&nbsp; 시도: <strong id="t-try">0</strong>번
-      </div>
-      <div class="prog-wrap"><div class="prog-bar" id="t-prog" style="width:0%;background:linear-gradient(90deg,#a080ff,#6040ff)"></div></div>
-    </div>
-    <div class="t-grid" id="t-grid"></div>
-    <div class="status" id="t-status"><span class="s-hint">상자를 눌러서 보물을 찾아봐요! 🔍</span></div>
-    <div class="row">
-      <button class="reset-btn" onclick="resetTreasure()">🔄 다시하기</button>
-    </div>
-    <div class="box fw" style="text-align:center;padding:11px">
-      <div class="body" style="font-size:.93rem">이렇게 모든 경우를 하나씩 확인하는 게 <strong style="color:#a080ff">완전탐색</strong>이에요!</div>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════ SLIDE 7 ══════════ -->
-<div class="slide bg-orange" id="s7">
-  <div class="col fw" style="gap:18px">
-    <div style="font-size:4.5rem;animation:float 3s ease-in-out infinite">🤑</div>
-    <div class="t-large" style="color:#ffa500">그리디 알고리즘</div>
-    <div class="box box-o" style="text-align:center;max-width:680px">
-      <div style="font-size:1.8rem;margin-bottom:8px">💡</div>
-      <div class="t-med" style="font-size:1.5rem;color:#ffa500">"지금 당장 최고의 선택을 하자!"</div>
-      <div class="body" style="margin-top:12px;font-size:1rem">
-        매 순간마다 가장 좋아 보이는 것을 선택해요.<br>
-        앞을 멀리 보지 않고, <strong>지금 이 순간</strong>만 봐요!
-      </div>
-    </div>
-    <div class="row fw" style="gap:12px">
-      <div class="box" style="text-align:center;padding:14px 18px;flex:1;min-width:170px">
-        <div style="font-size:1.7rem;margin-bottom:6px">🍫</div>
-        <div class="body" style="font-size:.92rem">사탕 3개 중<br>가장 큰 것 선택!</div>
-      </div>
-      <div class="box" style="text-align:center;padding:14px 18px;flex:1;min-width:170px">
-        <div style="font-size:1.7rem;margin-bottom:6px">💰</div>
-        <div class="body" style="font-size:.92rem">거스름돈 줄 때<br>큰 동전부터!</div>
-      </div>
-      <div class="box" style="text-align:center;padding:14px 18px;flex:1;min-width:170px">
-        <div style="font-size:1.7rem;margin-bottom:6px">🚦</div>
-        <div class="body" style="font-size:.92rem">길 중 지금<br>가장 빠른 길!</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════ SLIDE 8 ══════════ -->
-<div class="slide bg-orange" id="s8">
-  <div class="col fw" style="gap:16px">
-    <div class="t-large" style="color:#ffa500;font-size:2rem">💰 그리디 예시: 동전 거스름돈</div>
-    <div class="box box-o fw" style="text-align:center">
-      <div class="body" style="font-size:1.15rem">
-        🛒 <strong>730원</strong>을 거슬러줘야 해요! 동전을 몇 개나 써야 할까요?
-      </div>
-    </div>
-    <div class="box fw" style="padding:20px">
-      <div class="body" style="color:#ffa500;font-weight:700;margin-bottom:14px">
-        🤑 그리디: <span style="color:#fff">큰 동전부터!</span>
-      </div>
-      <div class="steps">
-        <div class="col" style="gap:4px;align-items:center">
-          <div class="step-c s-done" style="font-size:.75rem">500원</div>
-          <span class="body" style="font-size:.78rem;color:rgba(255,255,255,.7)">→ 230원 남음</span>
-        </div>
-        <div class="arr">→</div>
-        <div class="col" style="gap:4px;align-items:center">
-          <div class="step-c s-done" style="font-size:.75rem">100원</div>
-          <span class="body" style="font-size:.78rem;color:rgba(255,255,255,.7)">→ 130원 남음</span>
-        </div>
-        <div class="arr">→</div>
-        <div class="col" style="gap:4px;align-items:center">
-          <div class="step-c s-done" style="font-size:.75rem">100원</div>
-          <span class="body" style="font-size:.78rem;color:rgba(255,255,255,.7)">→ 30원 남음</span>
-        </div>
-        <div class="arr">→</div>
-        <div class="col" style="gap:4px;align-items:center">
-          <div class="step-c s-done" style="font-size:.75rem">10원</div>
-          <span class="body" style="font-size:.78rem;color:rgba(255,255,255,.7)">→ 20원 남음</span>
-        </div>
-        <div class="arr">→</div>
-        <div class="col" style="gap:4px;align-items:center">
-          <div class="step-c s-done" style="font-size:.75rem">10원</div>
-          <span class="body" style="font-size:.78rem;color:rgba(255,255,255,.7)">→ 10원 남음</span>
-        </div>
-        <div class="arr">→</div>
-        <div class="col" style="gap:4px;align-items:center">
-          <div class="step-c s-active" style="font-size:.75rem">10원</div>
-          <span class="body" style="font-size:.78rem;color:#50ff50">→ 완료! 🎉</span>
-        </div>
-      </div>
-    </div>
-    <div class="box box-g fw" style="text-align:center">
-      <div class="body">
-        ✅ 총 <strong style="color:#50ff50;font-size:1.4rem">6개</strong>의 동전으로 끝!&nbsp;&nbsp;
-        <span style="font-size:.88rem;color:rgba(255,255,255,.65)">500 + 100 + 100 + 10 + 10 + 10 = 730원</span>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════ SLIDE 9: 그리디 게임 ══════════ -->
-<div class="slide bg-orange" id="s9">
-  <div class="col fw" style="gap:10px">
-    <div class="t-large" style="color:#ffa500;font-size:1.9rem">🎮 그리디 게임: 동전 거스름돈!</div>
-    <div class="box box-o fw" style="padding:14px;text-align:center">
-      <div class="body" style="font-size:1.15rem">
-        🛒 거슬러줄 금액: <strong style="color:#ffa500;font-size:1.55rem" id="g-target">730</strong>원
-      </div>
-      <div class="body" style="margin-top:4px;font-size:.93rem">
-        현재: <strong style="color:#50ff50" id="g-cur">0</strong>원 &nbsp;|&nbsp;
-        남은: <strong style="color:#ff6b6b" id="g-rem">730</strong>원 &nbsp;|&nbsp;
-        동전 수: <strong id="g-cnt">0</strong>개
-      </div>
-      <div class="prog-wrap"><div class="prog-bar" id="g-prog" style="width:0%"></div></div>
-    </div>
-    <div class="row" style="gap:14px">
-      <div class="col" style="gap:4px">
-        <button class="coin-btn c500" id="b500" onclick="addCoin(500)">
-          <span style="font-size:.65rem">💛</span>500원
-        </button>
-        <span class="body" style="font-size:.8rem;color:rgba(255,255,255,.55)">×<span id="n500">5</span></span>
-      </div>
-      <div class="col" style="gap:4px">
-        <button class="coin-btn c100" id="b100" onclick="addCoin(100)">
-          <span style="font-size:.65rem">⚪</span>100원
-        </button>
-        <span class="body" style="font-size:.8rem;color:rgba(255,255,255,.55)">×<span id="n100">5</span></span>
-      </div>
-      <div class="col" style="gap:4px">
-        <button class="coin-btn c50" id="b50" onclick="addCoin(50)">
-          <span style="font-size:.65rem">🟤</span>50원
-        </button>
-        <span class="body" style="font-size:.8rem;color:rgba(255,255,255,.55)">×<span id="n50">5</span></span>
-      </div>
-      <div class="col" style="gap:4px">
-        <button class="coin-btn c10" id="b10" onclick="addCoin(10)">
-          <span style="font-size:.65rem">🟫</span>10원
-        </button>
-        <span class="body" style="font-size:.8rem;color:rgba(255,255,255,.55)">×<span id="n10">10</span></span>
-      </div>
-    </div>
-    <div class="fw">
-      <div class="body" style="font-size:.88rem;margin-bottom:5px;color:rgba(255,255,255,.65)">🪙 선택한 동전:</div>
-      <div class="coin-bag" id="g-bag"></div>
-    </div>
-    <div class="status" id="g-status"><span class="s-hint">동전을 눌러서 거스름돈을 만들어봐요! 큰 동전부터 써보세요! 🤑</span></div>
-    <div class="row">
-      <button class="reset-btn" onclick="resetCoin()">🔄 다시하기</button>
-      <button class="btn btn-next" onclick="greedyAuto()">💡 그리디 방법 보기</button>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════ SLIDE 10: 그리디의 함정 ══════════ -->
-<div class="slide" style="background:linear-gradient(135deg,#2a0808,#3d1010,#1a0505)" id="s10">
-  <div class="col fw" style="gap:15px">
-    <div class="t-large" style="color:#ff6b6b">⚠️ 그리디의 함정!</div>
-    <div class="box" style="border-color:rgba(255,107,107,.35);background:rgba(255,107,107,.1);text-align:center;max-width:700px">
-      <div class="body">
-        그리디가 <strong style="color:#ff6b6b">항상 최선은 아니에요!</strong><br>
-        🤔 만약 <strong style="color:#ffd700">400원짜리 동전</strong>이 새로 생겼다면?
-      </div>
-    </div>
-    <div class="g2">
-      <div class="box" style="border-color:rgba(255,80,80,.4);background:rgba(255,80,80,.1)">
-        <div style="text-align:center;margin-bottom:12px">
-          <div style="font-size:1.6rem;margin-bottom:3px">🤑 그리디 방법</div>
-          <div style="font-size:.83rem;color:rgba(255,255,255,.5)">목표: 800원 &nbsp;|&nbsp; 동전: 500·400·100원</div>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-bottom:12px">
-          <div style="background:linear-gradient(135deg,#f5c518,#e6b000);color:#5a3e00;border-radius:50%;width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.8rem;box-shadow:0 3px 8px rgba(0,0,0,.4)">500원</div>
-          <div style="display:flex;align-items:center;font-size:1.2rem;font-weight:700">+</div>
-          <div style="background:linear-gradient(135deg,#d0d0d0,#a8a8a8);color:#333;border-radius:50%;width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.8rem;box-shadow:0 3px 8px rgba(0,0,0,.4)">100원</div>
-          <div style="display:flex;align-items:center;font-size:1.2rem;font-weight:700">+</div>
-          <div style="background:linear-gradient(135deg,#d0d0d0,#a8a8a8);color:#333;border-radius:50%;width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.8rem;box-shadow:0 3px 8px rgba(0,0,0,.4)">100원</div>
-          <div style="display:flex;align-items:center;font-size:1.2rem;font-weight:700">+</div>
-          <div style="background:linear-gradient(135deg,#d0d0d0,#a8a8a8);color:#333;border-radius:50%;width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.8rem;box-shadow:0 3px 8px rgba(0,0,0,.4)">100원</div>
-        </div>
-        <div style="text-align:center">
-          <div style="font-size:1.3rem;color:#ff6b6b;font-weight:900">= 4개 ❌</div>
-          <div style="font-size:.83rem;color:rgba(255,255,255,.5);margin-top:4px">"500이 가장 크니까 먼저!" → 비효율!</div>
-        </div>
-      </div>
-      <div class="box" style="border-color:rgba(80,200,80,.4);background:rgba(80,200,80,.1)">
-        <div style="text-align:center;margin-bottom:12px">
-          <div style="font-size:1.6rem;margin-bottom:3px">✅ 최선의 방법</div>
-          <div style="font-size:.83rem;color:rgba(255,255,255,.5)">목표: 800원 &nbsp;|&nbsp; 동전: 500·400·100원</div>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-bottom:12px">
-          <div style="background:linear-gradient(135deg,#a040ff,#7020cc);color:#fff;border-radius:50%;width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.8rem;box-shadow:0 3px 8px rgba(0,0,0,.4)">400원</div>
-          <div style="display:flex;align-items:center;font-size:1.2rem;font-weight:700">+</div>
-          <div style="background:linear-gradient(135deg,#a040ff,#7020cc);color:#fff;border-radius:50%;width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.8rem;box-shadow:0 3px 8px rgba(0,0,0,.4)">400원</div>
-        </div>
-        <div style="text-align:center">
-          <div style="font-size:1.3rem;color:#50ff50;font-weight:900">= 2개 ✅</div>
-          <div style="font-size:.83rem;color:rgba(255,255,255,.5);margin-top:4px">400+400이 훨씬 적어요!</div>
-        </div>
-      </div>
-    </div>
-    <div class="box box-o" style="text-align:center;max-width:700px;width:100%;padding:15px">
-      <div class="body" style="font-size:1rem">
-        💡 그리디는 동전 종류에 따라 <strong style="color:#ffa500">틀릴 수 있어요!</strong><br>
-        <span style="font-size:.88rem;color:rgba(255,255,255,.65)">이런 경우엔 완전탐색이라면 400+400=2개를 찾아낼 수 있어요 🔍</span>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════ SLIDE 11: 비교 ══════════ -->
-<div class="slide bg-dark" id="s11">
-  <div class="col fw" style="gap:20px">
-    <div class="t-large">🆚 그리디 vs 완전탐색</div>
-    <table class="ctable">
-      <tr>
-        <th class="th-g">비교</th>
-        <th class="th-o">🤑 그리디</th>
-        <th class="th-p">🔍 완전탐색</th>
-      </tr>
-      <tr>
-        <td><strong>방법</strong></td>
-        <td>지금 가장 좋은 것 선택</td>
-        <td>모든 경우를 다 확인</td>
-      </tr>
-      <tr>
-        <td><strong>속도</strong></td>
-        <td>⚡ 빠르다!</td>
-        <td>🐢 느릴 수 있어요</td>
-      </tr>
-      <tr>
-        <td><strong>정확도</strong></td>
-        <td>😅 가끔 틀릴 수도</td>
-        <td>✅ 항상 정확해요</td>
-      </tr>
-      <tr>
-        <td><strong>언제?</strong></td>
-        <td>빠른 답이 필요할 때</td>
-        <td>반드시 최선이 필요할 때</td>
-      </tr>
-      <tr>
-        <td><strong>예시</strong></td>
-        <td>동전 거스름돈, 일정 짜기</td>
-        <td>비밀번호 찾기, 보물 찾기</td>
-      </tr>
-    </table>
-  </div>
-</div>
-
-<!-- ══════════ SLIDE 12: 퀴즈 ══════════ -->
-<div class="slide bg-quiz" id="s12">
-  <div class="col fw" style="gap:16px;max-width:720px">
-    <div class="t-large">🧠 퀴즈 타임!</div>
-    <div class="box fw" style="text-align:center" id="q1-box">
-      <div class="body" style="font-size:1.1rem;margin-bottom:18px">
-        Q1. 마트에서 3000원짜리 장난감을 사요.<br>
-        가장 적은 동전으로 3000원을 내려면 어떤 방법?
-      </div>
-      <div class="col" style="gap:10px">
-        <button class="q-opt" onclick="checkQ(this,true,'q1')">🤑 그리디 – 큰 동전부터 사용</button>
-        <button class="q-opt" onclick="checkQ(this,false,'q1')">🔍 완전탐색 – 모든 조합 시도</button>
-      </div>
-      <div id="q1-res" style="margin-top:14px;min-height:28px"></div>
-    </div>
-    <div class="box fw" style="text-align:center;display:none" id="q2-box">
-      <div class="body" style="font-size:1.1rem;margin-bottom:18px">
-        Q2. 방 어딘가에 열쇠가 숨어 있어요.<br>
-        어디 있는지 전혀 모를 때 확실한 방법은?
-      </div>
-      <div class="col" style="gap:10px">
-        <button class="q-opt" onclick="checkQ(this,false,'q2')">🤑 그리디 – 제일 좋아보이는 곳만</button>
-        <button class="q-opt" onclick="checkQ(this,true,'q2')">🔍 완전탐색 – 방 모든 곳 찾기</button>
-      </div>
-      <div id="q2-res" style="margin-top:14px;min-height:28px"></div>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════ SLIDE 13: 마무리 ══════════ -->
-<div class="slide bg-title" id="s13">
-  <div class="col fw" style="gap:20px">
-    <div style="font-size:4.5rem;animation:float 3s ease-in-out infinite">🏆</div>
-    <div class="t-large grad">오늘 배운 것!</div>
-    <div class="g2">
-      <div class="box box-o" style="text-align:center">
-        <div style="font-size:2.3rem;margin-bottom:8px">🤑</div>
-        <div style="font-weight:700;font-size:1.2rem;color:#ffa500;margin-bottom:8px">그리디 알고리즘</div>
-        <div class="body" style="font-size:.95rem">
-          매 순간 가장 좋은 것을<br>선택하는 방법!<br>
-          ⚡ 빠르지만 가끔 틀려요
-        </div>
-      </div>
-      <div class="box box-b" style="text-align:center">
-        <div style="font-size:2.3rem;margin-bottom:8px">🔍</div>
-        <div style="font-weight:700;font-size:1.2rem;color:#50a0ff;margin-bottom:8px">완전탐색</div>
-        <div class="body" style="font-size:.95rem">
-          모든 경우를 다<br>확인하는 방법!<br>
-          ✅ 느리지만 확실해요
-        </div>
-      </div>
-    </div>
-    <div class="box box-g" style="text-align:center;max-width:680px;width:100%">
-      <div class="body" style="font-size:1.1rem">
-        🌟 <strong>두 방법 모두 훌륭해요!</strong><br>
-        상황에 맞는 방법을 고르는 게 진짜 실력이에요!<br>
-        <span style="font-size:.9rem;color:rgba(255,255,255,.65);display:block;margin-top:6px">여러분도 이제 알고리즘을 알고 있어요! 👏</span>
-      </div>
-    </div>
-    <div class="row" style="font-size:2.3rem;gap:16px">🎉 🚀 💡 🏆 🎊</div>
-  </div>
-</div>
-
-<!-- ══════════ NAV ══════════ -->
-<div class="nav">
-  <button class="btn btn-prev" onclick="go(-1)" id="prev-btn">◀ 이전</button>
-  <button class="btn btn-next" onclick="go(1)" id="next-btn">다음 ▶</button>
-</div>
-
 <script>
-// ── Stars ──
-(function(){
-  const c=document.getElementById('stars');
-  for(let i=0;i<70;i++){
-    const s=document.createElement('div');
-    s.className='star';
-    const sz=Math.random()*3+1;
-    s.style.cssText=`width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;animation-delay:${Math.random()*3}s;animation-duration:${1.5+Math.random()*2}s;opacity:${.3+Math.random()*.7}`;
-    c.appendChild(s);
+(function () {
+  var slides = document.querySelectorAll('.slide');
+  var idx = 0;
+  var counter = document.getElementById('counter');
+  var progressFill = document.getElementById('progressFill');
+  var prevBtn = document.getElementById('prevBtn');
+  var nextBtn = document.getElementById('nextBtn');
+
+  function render() {
+    slides.forEach(function (s, i) {
+      var on = i === idx;
+      s.classList.toggle('active', on);
+      s.setAttribute('aria-hidden', String(!on));
+    });
+    counter.textContent = (idx + 1) + ' / ' + slides.length;
+    progressFill.style.width = ((idx + 1) / slides.length * 100) + '%';
+    prevBtn.disabled = idx === 0;
+    nextBtn.disabled = idx === slides.length - 1;
   }
+
+  function next() { if (idx < slides.length - 1) { idx++; render(); } }
+  function prev() { if (idx > 0) { idx--; render(); } }
+
+  prevBtn.addEventListener('click', prev);
+  nextBtn.addEventListener('click', next);
+  window.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+      e.preventDefault(); next();
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault(); prev();
+    }
+  });
+
+  render();
 })();
 
-// ── Slides ──
-const TOTAL=13;
-let cur=1;
-function showSlide(n){
-  document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));
-  document.getElementById('s'+n).classList.add('active');
-  document.getElementById('ctr').textContent=n+' / '+TOTAL;
-  document.getElementById('prev-btn').style.visibility=n===1?'hidden':'visible';
-  document.getElementById('next-btn').style.visibility=n===TOTAL?'hidden':'visible';
-  if(n===6)initTreasure();
-  if(n===9)initCoin();
-}
-function go(d){cur=Math.max(1,Math.min(TOTAL,cur+d));showSlide(cur);}
-document.addEventListener('keydown',e=>{
-  if(['ArrowRight','ArrowDown',' '].includes(e.key))go(1);
-  if(['ArrowLeft','ArrowUp'].includes(e.key))go(-1);
-});
-showSlide(1);
-
-// ── Coin Game ──
-const AMOUNTS=[140,230,370,450,560,630,740,820,390,680,510,270,480,350,710];
-let TARGET=730,gCur=0,gCoins=[],gCounts={500:5,100:5,50:5,10:10},gDone=false;
-function computeGreedy(){
-  const vals=[500,100,50,10],avail={500:5,100:5,50:5,10:10},seq=[];
-  let rem=TARGET;
-  for(const c of vals){const n=Math.min(Math.floor(rem/c),avail[c]);for(let i=0;i<n;i++)seq.push(c);rem-=n*c;}
-  return seq;
-}
-function initCoin(){
-  TARGET=AMOUNTS[Math.floor(Math.random()*AMOUNTS.length)];
-  document.getElementById('g-target').textContent=TARGET;
-  document.getElementById('g-rem').textContent=TARGET;
-  resetCoinState();
-}
-function resetCoinState(){
-  gCur=0;gCoins=[];gCounts={500:5,100:5,50:5,10:10};gDone=false;
-  refreshCoin();
-  setStatus('g-status','<span class="s-hint">동전을 눌러서 거스름돈을 만들어봐요! 큰 동전부터 써보세요! 🤑</span>');
-}
-function addCoin(v){
-  if(gDone)return;
-  if(gCur+v>TARGET){setStatus('g-status','<span style="color:#ff6b6b">❌ 너무 많아요! '+(gCur+v)+'원이 돼요!</span>');return;}
-  if(gCounts[v]<=0){setStatus('g-status','<span style="color:#ff6b6b">❌ '+v+'원 동전이 없어요!</span>');return;}
-  gCoins.push(v);gCounts[v]--;gCur+=v;
-  refreshCoin();
-  if(gCur===TARGET){
-    const n=gCoins.length,opt=computeGreedy().length;
-    setStatus('g-status','<span class="s-win">🎉 성공! '+n+'개의 동전으로 만들었어요!'+(n===opt?' 그리디와 같아요! 👏':' (그리디는 '+opt+'개 사용해요!)')+'</span>');
-    gDone=true;
-    [500,100,50,10].forEach(v=>document.getElementById('b'+v).disabled=true);
-  } else {
-    setStatus('g-status','<span class="s-info">💡 '+(TARGET-gCur)+'원이 더 필요해요!</span>');
-  }
-}
-function refreshCoin(){
-  document.getElementById('g-cur').textContent=gCur;
-  document.getElementById('g-rem').textContent=TARGET-gCur;
-  document.getElementById('g-cnt').textContent=gCoins.length;
-  document.getElementById('g-prog').style.width=(gCur/TARGET*100).toFixed(1)+'%';
-  [500,100,50,10].forEach(v=>{
-    document.getElementById('n'+v).textContent=gCounts[v];
-    document.getElementById('b'+v).disabled=gCounts[v]<=0||gDone;
-  });
-  const bag=document.getElementById('g-bag');
-  bag.innerHTML='';
-  gCoins.forEach(c=>{const t=document.createElement('span');t.className='coin-tag';t.textContent=c+'원';bag.appendChild(t);});
-}
-function resetCoin(){initCoin();}
-function greedyAuto(){
-  resetCoinState();
-  computeGreedy().forEach((v,i)=>setTimeout(()=>addCoin(v),(i+1)*500));
+function toggleAnswer(id) {
+  var el = document.getElementById(id);
+  el.classList.toggle('revealed');
+  var btn = el.querySelector('button');
+  btn.textContent = el.classList.contains('revealed') ? '다시 가리기' : '정답 보기';
 }
 
-// ── Treasure Game ──
-let tPos=-1,tOpen=new Set();
-function initTreasure(){
-  tPos=Math.floor(Math.random()*16);
-  tOpen=new Set();
-  const grid=document.getElementById('t-grid');
-  grid.innerHTML='';
-  for(let i=0;i<16;i++){
-    const b=document.createElement('button');
-    b.className='chest';b.textContent='📦';
-    b.onclick=()=>openChest(i,b);
-    grid.appendChild(b);
-  }
-  document.getElementById('t-open').textContent=0;
-  document.getElementById('t-try').textContent=0;
-  document.getElementById('t-prog').style.width='0%';
-  setStatus('t-status','<span class="s-hint">상자를 눌러서 보물을 찾아봐요! 🔍</span>');
+function handleGuess() {
+  document.getElementById('tryResponse').textContent = '음... 정말 그럴까요? 다음 장에서 함께 확인해봐요! 👀';
 }
-function openChest(idx,btn){
-  if(tOpen.has(idx)||btn.disabled)return;
-  tOpen.add(idx);
-  document.getElementById('t-open').textContent=tOpen.size;
-  document.getElementById('t-try').textContent=tOpen.size;
-  document.getElementById('t-prog').style.width=(tOpen.size/16*100)+'%';
-  if(idx===tPos){
-    btn.textContent='💎';btn.classList.add('found');btn.disabled=true;
-    document.querySelectorAll('.chest:not(:disabled)').forEach(b=>{b.disabled=true;});
-    setStatus('t-status','<span class="s-win">🎉 찾았어요! '+tOpen.size+'번째 시도에서 보물 발견! 완전탐색 성공! 🏆</span>');
-  } else {
-    btn.textContent='💨';btn.classList.add('empty');btn.disabled=true;
-    setStatus('t-status','<span class="s-info">❌ 비어있어요! 계속 찾아봐요! ('+tOpen.size+'/16 확인)</span>');
-  }
-}
-function resetTreasure(){initTreasure();}
-
-// ── Quiz ──
-const qDone={q1:false,q2:false};
-function checkQ(btn,correct,qid){
-  if(qDone[qid])return;
-  qDone[qid]=true;
-  const opts=btn.parentElement.querySelectorAll('.q-opt');
-  opts.forEach(o=>o.disabled=true);
-  if(correct){
-    btn.classList.add('correct');
-    document.getElementById(qid+'-res').innerHTML='<span style="color:#50ff50;font-size:1rem">🎉 정답이에요! 잘했어요! 👏</span>';
-  } else {
-    btn.classList.add('wrong');
-    Array.from(opts).forEach(o=>{if(o!==btn)o.classList.add('correct');});
-    document.getElementById(qid+'-res').innerHTML='<span style="color:#ff8888;font-size:1rem">💡 아쉬워요! 정답을 확인해봐요!</span>';
-  }
-  if(qid==='q1') setTimeout(()=>document.getElementById('q2-box').style.display='block',1200);
-}
-function setStatus(id,html){document.getElementById(id).innerHTML=html;}
 </script>
 </body>
 </html>
